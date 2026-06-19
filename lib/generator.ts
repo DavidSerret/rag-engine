@@ -1,12 +1,6 @@
 import { cohereClient } from './cohere'
 import type { RankedCandidate } from './retriever'
-
-const PREAMBLE = `Eres un asistente de recuperación de información.
-Responde basándote ÚNICAMENTE en los fragmentos de contexto proporcionados.
-Puedes sintetizar e interpretar la información presente en los fragmentos para responder preguntas.
-Solo di "No encuentro esa información en los documentos proporcionados." cuando el tema no aparezca en ningún fragmento.
-No introduzcas hechos externos que no estén en los fragmentos.
-Cita el número de fragmento (Fragmento 1, Fragmento 2, etc.) de cada afirmación que hagas.`
+import { PREAMBLES, type Lang } from './i18n'
 
 export type GeneratorResult = {
   answer: string
@@ -20,19 +14,24 @@ export type GeneratorResult = {
 export async function generateAnswer(
   question: string,
   chunks: RankedCandidate[],
-  apiKey?: string
+  apiKey?: string,
+  lang: Lang = 'en'
 ): Promise<GeneratorResult> {
   const cohere = cohereClient(apiKey)
 
+  const fragmentLabel = lang === 'es' ? 'Fragmento' : 'Fragment'
+  const contextLabel = lang === 'es' ? 'CONTEXTO' : 'CONTEXT'
+  const questionLabel = lang === 'es' ? 'PREGUNTA' : 'QUESTION'
+
   const context = chunks
-    .map((c, i) => `Fragmento ${i + 1}:\n${c.content}`)
+    .map((c, i) => `${fragmentLabel} ${i + 1}:\n${c.content}`)
     .join('\n\n---\n\n')
 
-  const message = `CONTEXTO:\n${context}\n\nPREGUNTA: ${question}`
+  const message = `${contextLabel}:\n${context}\n\n${questionLabel}: ${question}`
 
   const response = await cohere.chat({
     model: 'command-r-plus-08-2024',
-    preamble: PREAMBLE,
+    preamble: PREAMBLES[lang],
     message,
   })
 
