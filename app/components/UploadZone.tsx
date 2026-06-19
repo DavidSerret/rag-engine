@@ -37,15 +37,21 @@ export default function UploadZone({
 
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: formData });
-      const data = await res.json();
+      let data: { error?: string; inserted?: number };
+      try {
+        data = await res.json();
+      } catch {
+        setState({ status: "error", message: `Server error (${res.status})` });
+        return;
+      }
 
       if (!res.ok) {
         setState({ status: "error", message: data.error ?? s.serverError });
         return;
       }
 
-      setState({ status: "success", name: file.name, chunks: data.inserted });
-      onSuccess({ name: file.name, chunks: data.inserted });
+      setState({ status: "success", name: file.name, chunks: data.inserted! });
+      onSuccess({ name: file.name, chunks: data.inserted! });
     } catch {
       setState({ status: "error", message: s.serverError });
     }

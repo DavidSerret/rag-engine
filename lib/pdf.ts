@@ -1,10 +1,9 @@
-import { PDFParse } from 'pdf-parse'
+import { extractText } from 'unpdf'
 
 export async function extractAndClean(buffer: Buffer): Promise<string> {
-  const parser = new PDFParse({ data: buffer })
-  const result = await parser.getText({ pageJoiner: '\n\n' })
+  const { text } = await extractText(new Uint8Array(buffer), { mergePages: true })
 
-  return result.text
+  return (text as string)
     .replace(/-\n/g, '')
     .replace(/([^\n])\n([^\n])/g, '$1 $2')
     .replace(/[ \t]+/g, ' ')
