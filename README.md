@@ -1,58 +1,73 @@
 # rag-engine
 
-Production-ready RAG (Retrieval-Augmented Generation) engine for document Q&A. Upload a PDF, ask anything, get cited answers grounded strictly in the document.
+![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-pgvector-3ecf8e?logo=supabase&logoColor=white)
+![Cohere](https://img.shields.io/badge/Cohere-RAG-d4a017)
+![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel&logoColor=white)
 
-**Live demo:** _add your Vercel URL here_
+**[→ Live demo](https://rag-engine-gamma.vercel.app)**
+
+Upload any PDF and ask it anything. Answers are grounded strictly in the document and include exact citations.
 
 ---
 
 ## Pipeline
 
-### Ingestion
-
 ```
-PDF Upload → Text Extraction → Recursive Chunking → Embedding → pgvector
-  (browser)    (pdf-parse)      600 tok / 100 tok    (Cohere)   (Supabase)
-                                    overlap
-```
+INGESTION
 
-### Query
+  PDF Upload ──► Text Extraction ──► Recursive Chunking ──► Embedding ──► Supabase
+   (browser)        (unpdf)          ~600 tok / 100 tok      (Cohere)    pgvector
+                                          overlap           embed-v3.0    HNSW idx
 
-```
-Question → Embedding → Vector Search → Reranking → Generation → Answer + Citations
-            (Cohere)    top 15 chunks   top 5 chunks  (Cohere)
-           search_query  cosine / HNSW  rerank-v3.0   command-r-plus
+
+QUERY
+
+  Question ──► Embedding ──► Vector Search ──► Reranking ──► Generation ──► Answer
+               (Cohere)       cosine sim        top 5 of     (Cohere)     + citations
+             search_query      top 15          rerank-v3   command-r-plus
 ```
 
 ---
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 15 — App Router, TypeScript |
-| Database | Supabase — PostgreSQL + pgvector |
-| Embeddings | Cohere `embed-multilingual-v3.0` (1024 dims) |
-| Reranking | Cohere `rerank-multilingual-v3.0` |
-| Generation | Cohere `command-r-plus-08-2024` |
-| PDF parsing | `pdf-parse` v2 |
-| UI | Tailwind CSS v4, DM Mono |
+| Layer | Technology | Notes |
+|---|---|---|
+| Framework | Next.js 16, TypeScript | App Router, server actions |
+| Database | Supabase + pgvector | HNSW index, `match_documents` RPC |
+| Embeddings | Cohere `embed-multilingual-v3.0` | 1024 dims, `search_document` / `search_query` |
+| Reranking | Cohere `rerank-multilingual-v3.0` | top 15 → top 5 |
+| Generation | Cohere `command-r-plus-08-2024` | grounded, citation-aware prompt |
+| PDF parsing | `unpdf` | works in serverless, no native deps |
+| UI | Tailwind CSS v4, DM Mono | dark theme, teal/amber palette |
+
+---
+
+## Features
+
+- **Drag & drop** PDF upload with real-time progress feedback
+- **Semantic search** via pgvector cosine similarity
+- **Cross-encoder reranking** for precision on top of vector recall
+- **Cited answers** — every claim references a specific fragment and its position in the document
+- **Language toggle** — EN / ES switch affects both UI strings and the model preamble
+- **Inline document replacement** — swap PDFs mid-conversation without navigating away
+- **BYO API key** — users can provide their own Cohere key in the UI
 
 ---
 
 ## Key Technical Decisions
 
-**Chunking strategy** — Recursive splitting at paragraph → sentence → word boundaries (~600 tokens, ~100 token overlap, min 100 chars). Prevents mid-sentence cuts while keeping semantic coherence across chunks.
+**Two-phase retrieval** — ANN vector search (fast, high recall) retrieves 15 candidates. A cross-encoder reranker (slow, high precision) re-scores them and returns the top 5. Neither alone is sufficient for production quality.
 
-**Two-phase retrieval** — Vector search (cosine similarity via HNSW) retrieves the top 15 candidates. A cross-encoder reranker then re-scores them and returns the top 5. This balances recall (ANN is fast but imprecise) with precision (reranker is slow but accurate).
+**Input type distinction** — Cohere requires `search_document` at ingestion time and `search_query` at query time. Mixing them silently degrades retrieval.
 
-**Input type distinction** — Cohere requires `search_document` for ingestion and `search_query` for queries. Using the wrong type silently degrades retrieval quality.
+**Recursive chunking** — Text is split at paragraph → sentence → word boundaries (~600 tokens, ~100 token overlap, min 100 chars), preserving semantic coherence across chunks.
 
-**Document isolation** — The table is cleared before each ingestion. One active document at a time keeps the demo focused; multi-document support would require a `source` metadata filter on the RPC call.
+**Document isolation** — The table is cleared before each ingestion. One active document at a time keeps the demo focused and avoids cross-document contamination.
 
-**Language toggle** — The EN/ES switch changes both UI strings and the model preamble sent to the LLM, so cited answers are generated in the selected language.
-
-**CJS/ESM interop** — `pdf-parse` v2 is ESM-first and incompatible with Turbopack's default bundling. Fixed with `serverExternalPackages: ['pdf-parse']` in `next.config.ts`.
+**Language-aware generation** — The EN/ES toggle changes both UI strings and the model preamble, so fragment citations (`Fragment 1` vs `Fragmento 1`) are consistent with the answer language.
 
 ---
 
@@ -91,16 +106,10 @@ grant all on table documents to service_role;
 
 ## Running Locally
 
-### Prerequisites
-
-- Node.js 18+
-- A [Supabase](https://supabase.com) project with the schema above applied
-- A [Cohere](https://cohere.com) API key
-
-### Setup
+**Prerequisites:** Node.js 18+, a [Supabase](https://supabase.com) project with the schema above, a [Cohere](https://cohere.com) API key.
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/your-user/rag-engine
 cd rag-engine
 npm install
 ```
@@ -116,20 +125,19 @@ COHERE_API_KEY=...
 
 ```bash
 npm run dev
+# → http://localhost:3000
 ```
-
-Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Deploying to Vercel
+## Deploy to Vercel
 
-1. Push the repo to GitHub
-2. Import it in [vercel.com/new](https://vercel.com/new)
+1. Push to GitHub
+2. Import at [vercel.com/new](https://vercel.com/new) — set **Root Directory** to `rag-engine`
 3. Add the four environment variables from `.env.local` in the Vercel dashboard
 4. Deploy
 
-> **Note:** Vercel's default API route payload limit is 4.5 MB. For larger PDFs, configure `bodySizeLimit` in `next.config.ts`.
+> Vercel's default API route payload limit is 4.5 MB. For larger PDFs, set `bodySizeLimit` in `next.config.ts`.
 
 ---
 
@@ -138,22 +146,22 @@ Open [http://localhost:3000](http://localhost:3000).
 ```
 app/
   api/
-    ingest/route.ts   # PDF → chunks → embeddings → Supabase
-    query/route.ts    # question → embed → search → rerank → generate
+    ingest/route.ts      # PDF → chunks → embeddings → Supabase
+    query/route.ts       # question → embed → search → rerank → generate
   components/
-    Chat.tsx          # conversation UI, inline document replacement
-    UploadLanding.tsx # initial upload screen
-    UploadZone.tsx    # drag & drop PDF upload
-  page.tsx            # state machine: landing ↔ chat
+    Chat.tsx             # conversation UI + inline document replacement
+    UploadLanding.tsx    # initial upload screen
+    UploadZone.tsx       # drag & drop PDF upload
+  page.tsx               # state machine: landing ↔ chat
 lib/
-  chunker.ts          # recursive text splitting
-  cohere.ts           # shared Cohere client factory
-  db.ts               # Supabase insert + clear
-  embedder.ts         # embed queries and document chunks
-  generator.ts        # LLM answer generation
-  i18n.ts             # EN/ES strings and model preambles
-  pdf.ts              # PDF extraction and cleaning
-  retriever.ts        # vector search + reranking
+  chunker.ts             # recursive text splitting
+  cohere.ts              # shared Cohere client factory
+  db.ts                  # Supabase insert + clear
+  embedder.ts            # embed queries and document chunks
+  generator.ts           # LLM answer generation
+  i18n.ts                # EN/ES strings and model preambles
+  pdf.ts                 # PDF extraction and cleaning
+  retriever.ts           # vector search + reranking
 supabase/
-  schema.sql          # full database schema
+  schema.sql             # full database schema
 ```
