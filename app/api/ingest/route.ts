@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { extractAndClean } from '@/lib/pdf'
+import { chunkText } from '@/lib/chunker'
 
 export const runtime = 'nodejs'
 
@@ -17,10 +18,11 @@ export async function POST(request: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer())
   const text = await extractAndClean(buffer)
+  const chunks = chunkText(text)
 
   return NextResponse.json({
     received: true,
-    chars: text.length,
-    preview: text.slice(0, 500),
+    totalChunks: chunks.length,
+    firstChunk: chunks[0],
   })
 }
