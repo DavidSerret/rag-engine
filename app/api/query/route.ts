@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { embedQuery } from '@/lib/embedder'
+import { searchDocuments, rerankDocuments } from '@/lib/retriever'
 
 export const runtime = 'nodejs'
 
@@ -11,10 +12,14 @@ export async function POST(request: NextRequest) {
   }
 
   const embedding = await embedQuery(question)
+  const candidates = await searchDocuments(embedding)
+  const reranked = await rerankDocuments(question, candidates)
 
   return NextResponse.json({
     question,
-    dimensions: embedding.length,
-    sample: embedding.slice(0, 5),
+    reranked: reranked.map(c => ({
+      relevanceScore: c.relevanceScore,
+      preview: c.content.slice(0, 120),
+    })),
   })
 }
