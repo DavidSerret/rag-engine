@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { extractAndClean } from '@/lib/pdf'
 
 export const runtime = 'nodejs'
 
@@ -14,5 +15,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 })
   }
 
-  return NextResponse.json({ received: true, name: file.name, size: file.size })
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const text = await extractAndClean(buffer)
+
+  return NextResponse.json({
+    received: true,
+    chars: text.length,
+    preview: text.slice(0, 500),
+  })
 }
