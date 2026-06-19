@@ -7,6 +7,19 @@ const cohere = new CohereClient({ token: process.env.COHERE_API_KEY })
 
 const BATCH_SIZE = 96
 
+export async function embedQuery(text: string): Promise<number[]> {
+  const response = await cohere.embed({
+    texts: [text],
+    model: 'embed-multilingual-v3.0',
+    inputType: 'search_query',
+  })
+
+  const floats = response.embeddings as number[][]
+  if (!floats?.length) throw new Error('Cohere did not return embeddings')
+
+  return floats[0]
+}
+
 export async function embedChunks(chunks: Chunk[]): Promise<ChunkWithEmbedding[]> {
   const results: ChunkWithEmbedding[] = []
 
