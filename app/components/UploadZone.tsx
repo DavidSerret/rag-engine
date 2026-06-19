@@ -9,7 +9,13 @@ type State =
   | { status: "success"; name: string; chunks: number }
   | { status: "error"; message: string };
 
-export default function UploadZone({ apiKey }: { apiKey: string }) {
+export default function UploadZone({
+  apiKey,
+  onSuccess,
+}: {
+  apiKey: string;
+  onSuccess: () => void;
+}) {
   const [state, setState] = useState<State>({ status: "idle" });
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -35,6 +41,7 @@ export default function UploadZone({ apiKey }: { apiKey: string }) {
       }
 
       setState({ status: "success", name: file.name, chunks: data.inserted });
+      onSuccess();
     } catch {
       setState({ status: "error", message: "No se pudo conectar con el servidor." });
     }
@@ -72,6 +79,14 @@ export default function UploadZone({ apiKey }: { apiKey: string }) {
           <>
             <Spinner />
             <span className="text-xs text-zinc-400">procesando {state.name}…</span>
+          </>
+        ) : state.status === "success" ? (
+          <>
+            <svg className="w-7 h-7 text-zinc-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            <span className="text-xs text-zinc-600">reemplazar documento</span>
           </>
         ) : (
           <>

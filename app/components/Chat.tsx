@@ -11,7 +11,7 @@ type Source = {
 type Message =
   | { role: "user"; text: string }
   | { role: "assistant"; answer: string; sources: Source[] }
-  | { role: "error"; message: string };
+  | { role: "error"; message: string; question: string };
 
 export default function Chat({ apiKey }: { apiKey: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -40,13 +40,13 @@ export default function Chat({ apiKey }: { apiKey: string }) {
       const data = await res.json();
 
       if (!res.ok) {
-        setMessages((prev) => [...prev, { role: "error", message: data.error ?? "Error al consultar." }]);
+        setMessages((prev) => [...prev, { role: "error", message: data.error ?? "Error al consultar.", question }]);
         return;
       }
 
       setMessages((prev) => [...prev, { role: "assistant", answer: data.answer, sources: data.sources }]);
     } catch {
-      setMessages((prev) => [...prev, { role: "error", message: "No se pudo conectar con el servidor." }]);
+      setMessages((prev) => [...prev, { role: "error", message: "No se pudo conectar con el servidor.", question }]);
     } finally {
       setLoading(false);
     }
@@ -118,8 +118,14 @@ export default function Chat({ apiKey }: { apiKey: string }) {
           }
 
           return (
-            <div key={i} className="rounded-lg border border-red-900 bg-red-950/30 px-3 py-2">
+            <div key={i} className="rounded-lg border border-red-900 bg-red-950/30 px-3 py-2 flex items-start justify-between gap-2">
               <p className="text-xs text-red-400">{msg.message}</p>
+              <button
+                className="shrink-0 text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                onClick={() => { setInput(msg.question); }}
+              >
+                reintentar
+              </button>
             </div>
           );
         })}

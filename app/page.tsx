@@ -6,6 +6,7 @@ import Chat from "./components/Chat";
 
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
+  const [docVersion, setDocVersion] = useState(0);
 
   return (
     <div className="flex flex-col h-screen">
@@ -26,7 +27,7 @@ export default function Home() {
             Documentos
           </h2>
 
-          <UploadZone apiKey={apiKey} />
+          <UploadZone apiKey={apiKey} onSuccess={() => setDocVersion((v) => v + 1)} />
 
           {/* API key */}
           <div className="flex flex-col gap-1.5">
@@ -52,7 +53,7 @@ export default function Home() {
             Consulta
           </h2>
 
-          <Chat apiKey={apiKey} />
+          <Chat key={docVersion} apiKey={apiKey} />
         </section>
       </main>
     </div>
