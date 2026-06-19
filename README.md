@@ -10,6 +10,8 @@
 
 Upload any PDF and ask it anything. Answers are grounded strictly in the document and include exact citations.
 
+![RAG Engine screenshot](docs/screenshot.png)
+
 ---
 
 ## Pipeline
@@ -109,7 +111,7 @@ grant all on table documents to service_role;
 **Prerequisites:** Node.js 18+, a [Supabase](https://supabase.com) project with the schema above, a [Cohere](https://cohere.com) API key.
 
 ```bash
-git clone https://github.com/your-user/rag-engine
+git clone https://github.com/DavidSerret/rag-engine
 cd rag-engine
 npm install
 ```
@@ -118,7 +120,7 @@ Create `.env.local`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 COHERE_API_KEY=...
 ```
