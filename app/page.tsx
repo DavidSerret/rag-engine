@@ -1,4 +1,5 @@
 import UploadZone from "./components/UploadZone";
+import Chat from "./components/Chat";
 
 export default function Home() {
   return (
@@ -29,20 +30,7 @@ export default function Home() {
             Consulta
           </h2>
 
-          {/* Área de mensajes */}
-          <div className="flex-1 rounded-lg border border-zinc-800 bg-zinc-900/40 flex items-center justify-center">
-            <span className="text-zinc-700 text-xs">
-              sube un documento para empezar
-            </span>
-          </div>
-
-          {/* Input placeholder */}
-          <div className="flex gap-2">
-            <div className="flex-1 h-10 rounded-lg bg-zinc-900 border border-zinc-800" />
-            <button className="px-4 h-10 rounded-lg bg-zinc-900 border border-zinc-800 text-xs text-zinc-500 hover:border-teal-800 hover:text-teal-400 transition-colors">
-              enviar
-            </button>
-          </div>
+          <Chat />
         </section>
       </main>
     </div>
