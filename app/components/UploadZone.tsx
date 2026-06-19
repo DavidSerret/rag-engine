@@ -9,7 +9,7 @@ type State =
   | { status: "success"; name: string; chunks: number }
   | { status: "error"; message: string };
 
-export default function UploadZone() {
+export default function UploadZone({ apiKey }: { apiKey: string }) {
   const [state, setState] = useState<State>({ status: "idle" });
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -23,6 +23,7 @@ export default function UploadZone() {
 
     const formData = new FormData();
     formData.append("file", file);
+    if (apiKey) formData.append("cohereApiKey", apiKey);
 
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: formData });

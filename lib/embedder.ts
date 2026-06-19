@@ -1,13 +1,12 @@
-import { CohereClient } from 'cohere-ai'
+import { cohereClient } from './cohere'
 import type { Chunk } from './chunker'
 
 export type ChunkWithEmbedding = Chunk & { embedding: number[] }
 
-const cohere = new CohereClient({ token: process.env.COHERE_API_KEY })
-
 const BATCH_SIZE = 96
 
-export async function embedQuery(text: string): Promise<number[]> {
+export async function embedQuery(text: string, apiKey?: string): Promise<number[]> {
+  const cohere = cohereClient(apiKey)
   const response = await cohere.embed({
     texts: [text],
     model: 'embed-multilingual-v3.0',
@@ -20,7 +19,8 @@ export async function embedQuery(text: string): Promise<number[]> {
   return floats[0]
 }
 
-export async function embedChunks(chunks: Chunk[]): Promise<ChunkWithEmbedding[]> {
+export async function embedChunks(chunks: Chunk[], apiKey?: string): Promise<ChunkWithEmbedding[]> {
+  const cohere = cohereClient(apiKey)
   const results: ChunkWithEmbedding[] = []
 
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {

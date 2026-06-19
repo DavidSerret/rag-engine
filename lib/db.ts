@@ -8,6 +8,11 @@ const supabase = createClient(
 
 const BATCH_SIZE = 100
 
+export async function clearDocuments(): Promise<void> {
+  const { error } = await supabase.from('documents').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+  if (error) throw new Error(`Supabase clear error: ${error.message}`)
+}
+
 export async function insertChunks(chunks: ChunkWithEmbedding[]): Promise<number> {
   let inserted = 0
 

@@ -7,16 +7,18 @@ export const runtime = 'nodejs'
 
 export async function POST(request: NextRequest) {
   try {
-    const { question } = await request.json()
+    const { question, cohereApiKey } = await request.json()
 
     if (!question || typeof question !== 'string') {
       return NextResponse.json({ error: 'question is required' }, { status: 400 })
     }
 
-    const embedding = await embedQuery(question)
+    const apiKey = cohereApiKey || undefined
+
+    const embedding = await embedQuery(question, apiKey)
     const candidates = await searchDocuments(embedding)
-    const reranked = await rerankDocuments(question, candidates)
-    const result = await generateAnswer(question, reranked)
+    const reranked = await rerankDocuments(question, candidates, 5, apiKey)
+    const result = await generateAnswer(question, reranked, apiKey)
 
     return NextResponse.json(result)
   } catch (err) {

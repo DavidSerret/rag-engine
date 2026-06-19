@@ -1,7 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { CohereClient } from 'cohere-ai'
-
-const cohere = new CohereClient({ token: process.env.COHERE_API_KEY })
+import { cohereClient } from './cohere'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -34,8 +32,10 @@ export type RankedCandidate = Candidate & { relevanceScore: number }
 export async function rerankDocuments(
   query: string,
   candidates: Candidate[],
-  topN = 5
+  topN = 5,
+  apiKey?: string
 ): Promise<RankedCandidate[]> {
+  const cohere = cohereClient(apiKey)
   const response = await cohere.rerank({
     query,
     documents: candidates.map(c => c.content),

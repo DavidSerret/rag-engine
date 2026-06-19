@@ -13,7 +13,7 @@ type Message =
   | { role: "assistant"; answer: string; sources: Source[] }
   | { role: "error"; message: string };
 
-export default function Chat() {
+export default function Chat({ apiKey }: { apiKey: string }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -35,7 +35,7 @@ export default function Chat() {
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, cohereApiKey: apiKey || undefined }),
       });
       const data = await res.json();
 

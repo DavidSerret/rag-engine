@@ -1,7 +1,5 @@
-import { CohereClient } from 'cohere-ai'
+import { cohereClient } from './cohere'
 import type { RankedCandidate } from './retriever'
-
-const cohere = new CohereClient({ token: process.env.COHERE_API_KEY })
 
 const PREAMBLE = `Eres un asistente de recuperación de información.
 Responde basándote ÚNICAMENTE en los fragmentos de contexto proporcionados.
@@ -21,8 +19,11 @@ export type GeneratorResult = {
 
 export async function generateAnswer(
   question: string,
-  chunks: RankedCandidate[]
+  chunks: RankedCandidate[],
+  apiKey?: string
 ): Promise<GeneratorResult> {
+  const cohere = cohereClient(apiKey)
+
   const context = chunks
     .map((c, i) => `Fragmento ${i + 1}:\n${c.content}`)
     .join('\n\n---\n\n')
@@ -35,10 +36,8 @@ export async function generateAnswer(
     message,
   })
 
-  const answer = response.text
-
   return {
-    answer,
+    answer: response.text,
     sources: chunks.map((c, i) => ({
       fragment: i + 1,
       preview: c.content.slice(0, 150),
