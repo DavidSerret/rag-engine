@@ -1,8 +1,9 @@
 const CHUNK_TOKENS = 600
 const OVERLAP_TOKENS = 100
 const CHARS_PER_TOKEN = 4
+const MIN_CHUNK_CHARS = 100
 
-const CHUNK_SIZE = CHUNK_TOKENS * CHARS_PER_TOKEN   // ~2400 chars
+const CHUNK_SIZE = CHUNK_TOKENS * CHARS_PER_TOKEN    // ~2400 chars
 const OVERLAP_SIZE = OVERLAP_TOKENS * CHARS_PER_TOKEN // ~400 chars
 
 export type Chunk = {
@@ -38,18 +39,24 @@ export function chunkText(text: string): Chunk[] {
   while (pos < text.length) {
     const splitPoint = findSplitPoint(text.slice(pos), CHUNK_SIZE)
     const end = pos + splitPoint
+    const content = text.slice(pos, end).trim()
 
-    chunks.push({
-      content: text.slice(pos, end).trim(),
-      metadata: {
-        index: chunks.length,
-        start: pos,
-        end,
-      },
-    })
+    if (content.length >= MIN_CHUNK_CHARS) {
+      chunks.push({
+        content,
+        metadata: {
+          index: chunks.length,
+          start: pos,
+          end,
+        },
+      })
+    }
+
+    // If we reached the end of the text, stop immediately
+    if (end >= text.length) break
 
     pos = Math.max(pos + 1, end - OVERLAP_SIZE)
   }
 
-  return chunks.filter(c => c.content.length > 0)
+  return chunks
 }

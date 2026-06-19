@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { extractAndClean } from '@/lib/pdf'
 import { chunkText } from '@/lib/chunker'
 import { embedChunks } from '@/lib/embedder'
+import { insertChunks } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
@@ -21,10 +22,7 @@ export async function POST(request: NextRequest) {
   const text = await extractAndClean(buffer)
   const chunks = chunkText(text)
   const embedded = await embedChunks(chunks)
+  const inserted = await insertChunks(embedded)
 
-  return NextResponse.json({
-    received: true,
-    totalChunks: embedded.length,
-    firstEmbedding: embedded[0].embedding.slice(0, 5),
-  })
+  return NextResponse.json({ inserted })
 }
