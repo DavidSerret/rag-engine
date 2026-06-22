@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { strings, type Lang } from "@/lib/i18n";
+import { type Skin, type SkinId } from "@/lib/skins";
+import SkinSelector from "./SkinSelector";
 
 type Source = {
   fragment: number;
@@ -20,14 +22,18 @@ export default function Chat({
   apiKey,
   docInfo,
   lang,
+  skin,
   onLangToggle,
   onDocumentReplaced,
+  onSkinChange,
 }: {
   apiKey: string;
   docInfo: DocInfo;
   lang: Lang;
+  skin: Skin;
   onLangToggle: () => void;
   onDocumentReplaced: (info: DocInfo) => void;
+  onSkinChange: (id: SkinId) => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -53,7 +59,12 @@ export default function Chat({
       const res = await fetch("/api/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, cohereApiKey: apiKey || undefined, lang }),
+        body: JSON.stringify({
+          question,
+          cohereApiKey: apiKey || undefined,
+          lang,
+          preamble: skin.preamble[lang],
+        }),
       });
       const data = await res.json();
 
@@ -94,14 +105,16 @@ export default function Chat({
           docInfo={docInfo}
           apiKey={apiKey}
           lang={lang}
+          skin={skin}
           onLangToggle={onLangToggle}
           onDocumentReplaced={onDocumentReplaced}
+          onSkinChange={onSkinChange}
         />
 
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
           <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center">
-              <div className="w-3 h-3 rounded-full bg-teal-400" />
+            <div className="w-12 h-12 rounded-2xl bg-[var(--accent-bg)] border border-[var(--accent-dim)] flex items-center justify-center">
+              <div className="w-3 h-3 rounded-full bg-[var(--accent)]" />
             </div>
             <h2 className="text-2xl text-zinc-200 font-medium">{s.whatDoYouWant}</h2>
             <p className="text-xs text-zinc-600">{s.docReady(docInfo.name, docInfo.chunks)}</p>
@@ -109,8 +122,8 @@ export default function Chat({
 
           <div className="w-full max-w-2xl flex gap-2">
             <input
-              className="flex-1 h-12 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-teal-800/60 transition-colors"
-              placeholder={s.askPlaceholder}
+              className="flex-1 h-12 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-[var(--accent-dim)] transition-colors"
+              placeholder={skin.placeholder}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={onKeyDown}
@@ -118,8 +131,8 @@ export default function Chat({
             />
             <button
               className="px-5 h-12 rounded-xl text-sm font-medium transition-colors
-                bg-teal-500/10 border border-teal-800/50 text-teal-400
-                hover:bg-teal-500/20 hover:border-teal-600
+                bg-[var(--accent-bg)] border border-[var(--accent-dim)] text-[var(--accent)]
+                hover:bg-[var(--accent-bg)] hover:border-[var(--accent)]
                 disabled:opacity-40 disabled:cursor-not-allowed"
               onClick={send}
               disabled={!input.trim()}
@@ -139,8 +152,10 @@ export default function Chat({
         docInfo={docInfo}
         apiKey={apiKey}
         lang={lang}
+        skin={skin}
         onLangToggle={onLangToggle}
         onDocumentReplaced={onDocumentReplaced}
+        onSkinChange={onSkinChange}
       />
 
       <div className="flex-1 overflow-y-auto">
@@ -160,10 +175,10 @@ export default function Chat({
               return (
                 <div key={i} className="flex flex-col gap-3">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0">
-                      <div className="w-1.5 h-1.5 rounded-full bg-teal-400" />
+                    <div className="w-5 h-5 rounded-full bg-[var(--accent-bg)] border border-[var(--accent-dim)] flex items-center justify-center shrink-0">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
                     </div>
-                    <span className="text-[10px] text-teal-500 tracking-widest uppercase font-medium">rag</span>
+                    <span className="text-[10px] text-[var(--accent-dim)] tracking-widest uppercase font-medium">rag</span>
                   </div>
 
                   <div className="pl-7 text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
@@ -216,10 +231,10 @@ export default function Chat({
           {loading && (
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-teal-500/20 border border-teal-500/30 flex items-center justify-center shrink-0">
-                  <div className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+                <div className="w-5 h-5 rounded-full bg-[var(--accent-bg)] border border-[var(--accent-dim)] flex items-center justify-center shrink-0">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
                 </div>
-                <span className="text-[10px] text-teal-500 tracking-widest uppercase font-medium">rag</span>
+                <span className="text-[10px] text-[var(--accent-dim)] tracking-widest uppercase font-medium">rag</span>
               </div>
               <div className="pl-7 flex items-center gap-2">
                 <Spinner />
@@ -245,7 +260,7 @@ export default function Chat({
           <button
             className="px-5 h-11 rounded-xl text-sm transition-colors
               bg-zinc-900 border border-zinc-800 text-zinc-500
-              hover:border-teal-800 hover:text-teal-400
+              hover:border-[var(--accent-dim)] hover:text-[var(--accent)]
               disabled:opacity-40 disabled:cursor-not-allowed
               disabled:hover:border-zinc-800 disabled:hover:text-zinc-500"
             onClick={send}
@@ -264,14 +279,18 @@ function ChatHeader({
   docInfo,
   apiKey,
   lang,
+  skin,
   onLangToggle,
   onDocumentReplaced,
+  onSkinChange,
 }: {
   docInfo: DocInfo;
   apiKey: string;
   lang: Lang;
+  skin: Skin;
   onLangToggle: () => void;
   onDocumentReplaced: (info: DocInfo) => void;
+  onSkinChange: (id: SkinId) => void;
 }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -309,7 +328,7 @@ function ChatHeader({
   return (
     <header className="shrink-0 border-b border-zinc-800/60 px-6 py-3 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 min-w-0">
-        <span className="text-teal-400 tracking-widest uppercase text-xs font-medium shrink-0">
+        <span className="text-[var(--accent)] tracking-widest uppercase text-xs font-medium shrink-0">
           rag-engine
         </span>
         <span className="text-zinc-700 text-xs shrink-0">—</span>
@@ -333,6 +352,8 @@ function ChatHeader({
           {uploading ? s.replacing : s.replace}
         </button>
 
+        <SkinSelector currentId={skin.id} onChange={onSkinChange} compact />
+
         <LangToggle lang={lang} onToggle={onLangToggle} />
 
         <input
@@ -354,11 +375,11 @@ function ChatHeader({
 function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
   return (
     <button onClick={onToggle} className="flex items-center gap-1.5 text-[10px] tracking-widest uppercase">
-      <span className={lang === "en" ? "text-teal-400" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
+      <span className={lang === "en" ? "text-[var(--accent)]" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
         EN
       </span>
       <span className="text-zinc-700">·</span>
-      <span className={lang === "es" ? "text-teal-400" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
+      <span className={lang === "es" ? "text-[var(--accent)]" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
         ES
       </span>
     </button>
@@ -367,7 +388,7 @@ function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
 
 function Spinner() {
   return (
-    <svg className="w-4 h-4 animate-spin text-teal-400 shrink-0" fill="none" viewBox="0 0 24 24">
+    <svg className="w-4 h-4 animate-spin text-[var(--accent)] shrink-0" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>

@@ -76,7 +76,7 @@ export default function UploadZone({
     <div className="flex-1 flex flex-col gap-3">
       <div
         className={`flex-1 rounded-lg border border-dashed flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer select-none
-          ${state.status === "dragging" ? "border-teal-500 bg-teal-950/20" : "border-zinc-700 hover:border-zinc-500"}
+          ${state.status === "dragging" ? "border-[var(--accent)] bg-[var(--accent-bg)]" : "border-zinc-700 hover:border-zinc-500"}
           ${isUploading ? "pointer-events-none opacity-60" : ""}
         `}
         onClick={() => !isUploading && inputRef.current?.click()}
@@ -109,8 +109,8 @@ export default function UploadZone({
       </div>
 
       {state.status === "success" && (
-        <div className="rounded-lg border border-teal-800 bg-teal-950/30 px-3 py-2">
-          <p className="text-xs text-teal-400">✓ {state.name}</p>
+        <div className="rounded-lg border border-[var(--accent-dim)] bg-[var(--accent-bg)] px-3 py-2">
+          <p className="text-xs text-[var(--accent)]">✓ {state.name}</p>
           <p className="text-xs text-zinc-500 mt-0.5">{s.fragmentsIndexed(state.chunks)}</p>
         </div>
       )}
@@ -134,7 +134,7 @@ export default function UploadZone({
 
 function Spinner() {
   return (
-    <svg className="w-5 h-5 animate-spin text-teal-400" fill="none" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 animate-spin text-[var(--accent)]" fill="none" viewBox="0 0 24 24">
       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
     </svg>
