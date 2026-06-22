@@ -1,31 +1,60 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { type Lang } from "@/lib/i18n";
 import { skins, type SkinId } from "@/lib/skins";
+import { type Message } from "@/lib/types";
 import UploadLanding from "./components/UploadLanding";
 import Chat from "./components/Chat";
-
-type DocInfo = { name: string; chunks: number };
 
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
   const [lang, setLang] = useState<Lang>("en");
-  const [docInfo, setDocInfo] = useState<DocInfo | null>(null);
-  const [docVersion, setDocVersion] = useState(0);
   const [skinId, setSkinId] = useState<SkinId>("generic");
+  const [loadedDocs, setLoadedDocs] = useState<string[] | null>(null);
+  const [chatHistories, setChatHistories] = useState<Record<SkinId, Message[]>>({
+    generic: [],
+    cleantech: [],
+    physics: [],
+  });
 
   const skin = skins[skinId];
-  const toggleLang = () => setLang((l) => (l === "en" ? "es" : "en"));
 
-  function handleDocumentLoaded(info: DocInfo) {
-    setDocInfo(info);
-    setDocVersion((v) => v + 1);
-  }
+  // Hydrate corpus state on mount
+  useEffect(() => {
+    fetch("/api/documents")
+      .then((r) => r.json())
+      .then((d) => setLoadedDocs(d.filenames ?? []))
+      .catch(() => setLoadedDocs([]));
+  }, []);
+
+  const toggleLang = () => setLang((l) => (l === "en" ? "es" : "en"));
 
   function handleSkinChange(id: SkinId) {
     setSkinId(id);
-    setDocVersion((v) => v + 1);
+    // Corpus is shared — no reset needed
+  }
+
+  function handleDocumentAdded(filename: string) {
+    setLoadedDocs((prev) =>
+      prev && !prev.includes(filename) ? [...prev, filename] : prev
+    );
+  }
+
+  function handleDocumentRemoved(filename: string) {
+    setLoadedDocs((prev) => (prev ? prev.filter((f) => f !== filename) : prev));
+  }
+
+  function handleReplaceAll() {
+    setLoadedDocs([]);
+    setChatHistories({ generic: [], cleantech: [], physics: [] });
+  }
+
+  function handleMessagesChange(updater: (prev: Message[]) => Message[]) {
+    setChatHistories((prev) => ({
+      ...prev,
+      [skinId]: updater(prev[skinId]),
+    }));
   }
 
   const cssVars = {
@@ -34,7 +63,12 @@ export default function Home() {
     "--accent-bg": skin.colors.accentBg,
   } as React.CSSProperties;
 
-  if (!docInfo) {
+  // Still loading corpus state
+  if (loadedDocs === null) {
+    return <div className="min-h-screen bg-zinc-950" style={cssVars} />;
+  }
+
+  if (loadedDocs.length === 0) {
     return (
       <div style={cssVars}>
         <UploadLanding
@@ -43,7 +77,7 @@ export default function Home() {
           skin={skin}
           onApiKeyChange={setApiKey}
           onLangToggle={toggleLang}
-          onSuccess={handleDocumentLoaded}
+          onSuccess={handleDocumentAdded}
           onSkinChange={handleSkinChange}
         />
       </div>
@@ -53,14 +87,18 @@ export default function Home() {
   return (
     <div style={cssVars}>
       <Chat
-        key={docVersion}
+        key={skinId}
         apiKey={apiKey}
-        docInfo={docInfo}
         lang={lang}
         skin={skin}
+        messages={chatHistories[skinId]}
+        loadedDocs={loadedDocs}
         onLangToggle={toggleLang}
-        onDocumentReplaced={handleDocumentLoaded}
         onSkinChange={handleSkinChange}
+        onMessagesChange={handleMessagesChange}
+        onDocumentAdded={handleDocumentAdded}
+        onDocumentRemoved={handleDocumentRemoved}
+        onReplaceAll={handleReplaceAll}
       />
     </div>
   );
