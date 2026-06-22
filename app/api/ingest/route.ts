@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { extractAndClean } from '@/lib/pdf'
+import { extractText } from '@/lib/extractor'
 import { chunkText } from '@/lib/chunker'
 import { embedChunks } from '@/lib/embedder'
-import { clearDocuments, insertChunks } from '@/lib/db'
+import { insertChunks } from '@/lib/db'
 
 export const runtime = 'nodejs'
+
+const ACCEPTED = new Set(['pdf', 'docx', 'txt', 'md'])
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,19 +15,18 @@ export async function POST(request: NextRequest) {
     const cohereApiKey = formData.get('cohereApiKey') as string | null
 
     if (!file || !(file instanceof File)) {
-      return NextResponse.json({ error: 'No PDF file provided' }, { status: 400 })
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    if (file.type !== 'application/pdf') {
-      return NextResponse.json({ error: 'File must be a PDF' }, { status: 400 })
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? ''
+    if (!ACCEPTED.has(ext)) {
+      return NextResponse.json({ error: `Unsupported file type: .${ext}` }, { status: 400 })
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const text = await extractAndClean(buffer)
+    const text = await extractText(file)
     const chunks = chunkText(text)
     const embedded = await embedChunks(chunks, cohereApiKey ?? undefined)
-    await clearDocuments()
-    const inserted = await insertChunks(embedded)
+    const inserted = await insertChunks(embedded, file.name)
 
     return NextResponse.json({ inserted })
   } catch (err) {

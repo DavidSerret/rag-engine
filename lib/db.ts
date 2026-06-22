@@ -13,7 +13,7 @@ export async function clearDocuments(): Promise<void> {
   if (error) throw new Error(`Supabase clear error: ${error.message}`)
 }
 
-export async function insertChunks(chunks: ChunkWithEmbedding[]): Promise<number> {
+export async function insertChunks(chunks: ChunkWithEmbedding[], filename: string): Promise<number> {
   let inserted = 0
 
   for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
@@ -22,7 +22,7 @@ export async function insertChunks(chunks: ChunkWithEmbedding[]): Promise<number
     const rows = batch.map(c => ({
       content: c.content,
       embedding: c.embedding,
-      metadata: c.metadata,
+      metadata: { ...c.metadata, filename },
     }))
 
     const { error } = await supabase.from('documents').insert(rows)
@@ -32,4 +32,24 @@ export async function insertChunks(chunks: ChunkWithEmbedding[]): Promise<number
   }
 
   return inserted
+}
+
+export async function getLoadedDocuments(): Promise<string[]> {
+  const { data, error } = await supabase.from('documents').select('metadata')
+  if (error) throw new Error(`Supabase select error: ${error.message}`)
+
+  const seen = new Set<string>()
+  for (const row of data ?? []) {
+    const f = (row.metadata as { filename?: string })?.filename
+    if (f) seen.add(f)
+  }
+  return [...seen]
+}
+
+export async function deleteDocumentsByFilename(filename: string): Promise<void> {
+  const { error } = await supabase
+    .from('documents')
+    .delete()
+    .filter('metadata->>filename', 'eq', filename)
+  if (error) throw new Error(`Supabase delete error: ${error.message}`)
 }
