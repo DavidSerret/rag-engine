@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type Lang } from "@/lib/i18n";
 import { skins, type SkinId } from "@/lib/skins";
 import { type Message } from "@/lib/types";
 import UploadLanding from "./components/UploadLanding";
@@ -9,7 +8,6 @@ import Chat from "./components/Chat";
 
 export default function Home() {
   const [apiKey, setApiKey] = useState("");
-  const [lang, setLang] = useState<Lang>("en");
   const [skinId, setSkinId] = useState<SkinId>("generic");
   const [loadedDocs, setLoadedDocs] = useState<string[] | null>(null);
   const [chatHistories, setChatHistories] = useState<Record<SkinId, Message[]>>({
@@ -20,7 +18,6 @@ export default function Home() {
 
   const skin = skins[skinId];
 
-  // Hydrate corpus state on mount
   useEffect(() => {
     fetch("/api/documents")
       .then((r) => r.json())
@@ -28,11 +25,8 @@ export default function Home() {
       .catch(() => setLoadedDocs([]));
   }, []);
 
-  const toggleLang = () => setLang((l) => (l === "en" ? "es" : "en"));
-
   function handleSkinChange(id: SkinId) {
     setSkinId(id);
-    // Corpus is shared — no reset needed
   }
 
   function handleDocumentAdded(filename: string) {
@@ -63,7 +57,6 @@ export default function Home() {
     "--accent-bg": skin.colors.accentBg,
   } as React.CSSProperties;
 
-  // Still loading corpus state
   if (loadedDocs === null) {
     return <div className="min-h-screen bg-zinc-950" style={cssVars} />;
   }
@@ -73,10 +66,8 @@ export default function Home() {
       <div style={cssVars}>
         <UploadLanding
           apiKey={apiKey}
-          lang={lang}
           skin={skin}
           onApiKeyChange={setApiKey}
-          onLangToggle={toggleLang}
           onSuccess={handleDocumentAdded}
           onSkinChange={handleSkinChange}
         />
@@ -89,11 +80,9 @@ export default function Home() {
       <Chat
         key={skinId}
         apiKey={apiKey}
-        lang={lang}
         skin={skin}
         messages={chatHistories[skinId]}
         loadedDocs={loadedDocs}
-        onLangToggle={toggleLang}
         onSkinChange={handleSkinChange}
         onMessagesChange={handleMessagesChange}
         onDocumentAdded={handleDocumentAdded}

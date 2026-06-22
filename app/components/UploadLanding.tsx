@@ -1,34 +1,29 @@
 "use client";
 
-import { strings, type Lang } from "@/lib/i18n";
+import { strings } from "@/lib/i18n";
 import { type Skin, type SkinId } from "@/lib/skins";
 import UploadZone from "./UploadZone";
 import SkinSelector from "./SkinSelector";
 
+const s = strings["en"];
+
 export default function UploadLanding({
   apiKey,
-  lang,
   skin,
   onApiKeyChange,
-  onLangToggle,
   onSuccess,
   onSkinChange,
 }: {
   apiKey: string;
-  lang: Lang;
   skin: Skin;
   onApiKeyChange: (key: string) => void;
-  onLangToggle: () => void;
   onSuccess: (filename: string) => void;
   onSkinChange: (id: SkinId) => void;
 }) {
-  const s = strings[lang];
-
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col">
       <header className="shrink-0 px-6 py-4 flex items-center justify-between">
         <span className="text-xs tracking-widest uppercase text-zinc-700">rag-engine</span>
-        <LangToggle lang={lang} onToggle={onLangToggle} />
       </header>
 
       <main className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-12">
@@ -54,7 +49,6 @@ export default function UploadLanding({
           <div className="h-44">
             <UploadZone
               apiKey={apiKey}
-              lang={lang}
               onSuccess={(info) => onSuccess(info.name)}
             />
           </div>
@@ -110,22 +104,5 @@ function SkinHero({ skinId }: { skinId: SkinId }) {
         Upload any PDF and ask it anything
       </p>
     </div>
-  );
-}
-
-function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
-  return (
-    <button
-      onClick={onToggle}
-      className="flex items-center gap-1.5 text-[10px] tracking-widest uppercase"
-    >
-      <span className={lang === "en" ? "text-[var(--accent)]" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
-        EN
-      </span>
-      <span className="text-zinc-700">·</span>
-      <span className={lang === "es" ? "text-[var(--accent)]" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
-        ES
-      </span>
-    </button>
   );
 }

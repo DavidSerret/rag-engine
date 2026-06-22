@@ -1,7 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { strings, type Lang } from "@/lib/i18n";
+import { strings } from "@/lib/i18n";
+
+const s = strings["en"];
+
+const ACCEPTED_EXT = new Set(["pdf", "docx", "txt", "md"]);
 
 type State =
   | { status: "idle" }
@@ -12,23 +16,18 @@ type State =
 
 export default function UploadZone({
   apiKey,
-  lang,
   onSuccess,
 }: {
   apiKey: string;
-  lang: Lang;
   onSuccess: (info: { name: string; chunks: number }) => void;
 }) {
   const [state, setState] = useState<State>({ status: "idle" });
   const inputRef = useRef<HTMLInputElement>(null);
-  const s = strings[lang];
-
-  const ACCEPTED_EXT = new Set(["pdf", "docx", "txt", "md"]);
 
   async function upload(file: File) {
     const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (!ACCEPTED_EXT.has(ext)) {
-      setState({ status: "error", message: s.onlyPDF });
+      setState({ status: "error", message: "Only PDF, DOCX, TXT, and MD files are accepted." });
       return;
     }
 

@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { strings, type Lang } from "@/lib/i18n";
+import { strings } from "@/lib/i18n";
 import { type Skin, type SkinId } from "@/lib/skins";
 import { type Message } from "@/lib/types";
 import SkinSelector from "./SkinSelector";
 
-type DocInfo = { name: string; chunks: number };
+const s = strings["en"];
 
 function truncateFilename(name: string, max = 22): string {
   if (name.length <= max) return name;
@@ -17,11 +17,9 @@ function truncateFilename(name: string, max = 22): string {
 
 export default function Chat({
   apiKey,
-  lang,
   skin,
   messages,
   loadedDocs,
-  onLangToggle,
   onSkinChange,
   onMessagesChange,
   onDocumentAdded,
@@ -29,11 +27,9 @@ export default function Chat({
   onReplaceAll,
 }: {
   apiKey: string;
-  lang: Lang;
   skin: Skin;
   messages: Message[];
   loadedDocs: string[];
-  onLangToggle: () => void;
   onSkinChange: (id: SkinId) => void;
   onMessagesChange: (updater: (prev: Message[]) => Message[]) => void;
   onDocumentAdded: (filename: string) => void;
@@ -47,7 +43,6 @@ export default function Chat({
   const [replaceAllLoading, setReplaceAllLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const addDocInputRef = useRef<HTMLInputElement>(null);
-  const s = strings[lang];
 
   const hasMessages = messages.length > 0 || loading;
 
@@ -70,8 +65,7 @@ export default function Chat({
         body: JSON.stringify({
           question,
           cohereApiKey: apiKey || undefined,
-          lang,
-          preamble: skin.preamble[lang],
+          preamble: skin.preamble.en,
         }),
       });
       const data = await res.json();
@@ -86,7 +80,7 @@ export default function Chat({
 
       onMessagesChange((prev) => [
         ...prev,
-        { role: "assistant", answer: data.answer, sources: data.sources, lang },
+        { role: "assistant", answer: data.answer, sources: data.sources },
       ]);
     } catch {
       onMessagesChange((prev) => [
@@ -131,7 +125,7 @@ export default function Chat({
       await fetch("/api/documents", { method: "DELETE" });
       onReplaceAll();
     } catch {
-      // Silently fail — the state in page.tsx won't be reset, keeping the user in Chat
+      // Silently fail
     } finally {
       setReplaceAllLoading(false);
     }
@@ -156,7 +150,6 @@ export default function Chat({
   /* ── Shared header ───────────────────────────────────────────── */
   const header = (
     <header className="shrink-0 border-b border-zinc-800/60 px-4 py-2.5 flex items-center justify-between gap-4">
-      {/* Loaded doc pills */}
       <div className="flex items-center gap-1.5 flex-wrap min-w-0">
         {loadedDocs.map((name) => (
           <span
@@ -175,15 +168,13 @@ export default function Chat({
         ))}
       </div>
 
-      {/* Right controls */}
       <div className="flex items-center gap-3 shrink-0">
         <SkinSelector currentId={skin.id} onChange={onSkinChange} compact />
-        <LangToggle lang={lang} onToggle={onLangToggle} />
       </div>
     </header>
   );
 
-  /* ── Action row (below input) ────────────────────────────────── */
+  /* ── Action row ──────────────────────────────────────────────── */
   const actionRow = (
     <div className="flex items-center justify-between px-1 mt-1.5">
       <div className="flex items-center gap-2">
@@ -193,7 +184,7 @@ export default function Chat({
           disabled={addDocUploading}
         >
           {addDocUploading ? <MiniSpinner /> : <span>+</span>}
-          {addDocUploading ? s.replacing : "add document"}
+          {addDocUploading ? "uploading…" : "add document"}
         </button>
         {addDocError && <span className="text-[10px] text-red-400">{addDocError}</span>}
       </div>
@@ -285,9 +276,6 @@ export default function Chat({
                       <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
                     </div>
                     <span className="text-[10px] text-[var(--accent-dim)] tracking-widest uppercase font-medium">rag</span>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--accent-bg)] text-[var(--accent-dim)] border border-[var(--accent-dim)]/30 ml-1">
-                      {msg.lang.toUpperCase()}
-                    </span>
                   </div>
 
                   <div className="pl-7 text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
@@ -388,20 +376,6 @@ export default function Chat({
         </div>
       </div>
     </div>
-  );
-}
-
-function LangToggle({ lang, onToggle }: { lang: Lang; onToggle: () => void }) {
-  return (
-    <button onClick={onToggle} className="flex items-center gap-1.5 text-[10px] tracking-widest uppercase">
-      <span className={lang === "en" ? "text-[var(--accent)]" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
-        EN
-      </span>
-      <span className="text-zinc-700">·</span>
-      <span className={lang === "es" ? "text-[var(--accent)]" : "text-zinc-600 hover:text-zinc-400 transition-colors"}>
-        ES
-      </span>
-    </button>
   );
 }
 

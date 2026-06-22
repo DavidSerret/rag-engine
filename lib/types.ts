@@ -1,5 +1,3 @@
-import type { Lang } from './i18n'
-
 export type Source = {
   fragment: number
   preview: string
@@ -8,5 +6,5 @@ export type Source = {
 
 export type Message =
   | { role: 'user'; text: string }
-  | { role: 'assistant'; answer: string; sources: Source[]; lang: Lang }
+  | { role: 'assistant'; answer: string; sources: Source[] }
   | { role: 'error'; message: string; question: string }
