@@ -15,9 +15,11 @@ export async function generateAnswer(
   question: string,
   chunks: RankedCandidate[],
   apiKey?: string,
-  lang: Lang = 'en'
+  lang: Lang = 'en',
+  customPreamble?: string
 ): Promise<GeneratorResult> {
   const cohere = cohereClient(apiKey)
+  const preamble = customPreamble ?? PREAMBLES[lang]
 
   const fragmentLabel = lang === 'es' ? 'Fragmento' : 'Fragment'
   const contextLabel = lang === 'es' ? 'CONTEXTO' : 'CONTEXT'
@@ -31,7 +33,7 @@ export async function generateAnswer(
 
   const response = await cohere.chat({
     model: 'command-r-plus-08-2024',
-    preamble: PREAMBLES[lang],
+    preamble,
     message,
   })
 
