@@ -22,11 +22,19 @@ export default function SkinSelector({
             <button
               key={skin.id}
               onClick={() => onChange(skin.id)}
-              className={`text-[10px] tracking-widest uppercase px-2 py-0.5 rounded transition-colors ${
+              className={`flex items-center gap-1 px-2 py-0.5 rounded transition-colors ${
                 isActive ? "" : "text-zinc-700 hover:text-zinc-500"
               }`}
-              style={isActive ? { color: skin.colors.accent } : undefined}
+              style={isActive ? { color: skin.colors.accent, fontSize: "13px" } : { fontSize: "11px" }}
             >
+              <span
+                className="rounded-full shrink-0"
+                style={{
+                  width: isActive ? "7px" : "5px",
+                  height: isActive ? "7px" : "5px",
+                  backgroundColor: isActive ? skin.colors.accent : "#52525b",
+                }}
+              />
               {skin.label}
             </button>
           );

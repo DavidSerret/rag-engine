@@ -19,7 +19,7 @@ export default function UploadLanding({
   skin: Skin;
   onApiKeyChange: (key: string) => void;
   onLangToggle: () => void;
-  onSuccess: (info: { name: string; chunks: number }) => void;
+  onSuccess: (filename: string) => void;
   onSkinChange: (id: SkinId) => void;
 }) {
   const s = strings[lang];
@@ -42,7 +42,7 @@ export default function UploadLanding({
             rag-engine
           </h1>
 
-          <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">{s.tagline}</p>
+          <SkinHero skinId={skin.id} />
         </div>
 
         <div className="w-full max-w-md">
@@ -52,7 +52,11 @@ export default function UploadLanding({
         <div className="w-full max-w-md flex flex-col gap-1.5">
           <p className="text-[10px] tracking-widest uppercase text-zinc-700">{skin.uploadLabel}</p>
           <div className="h-44">
-            <UploadZone apiKey={apiKey} lang={lang} onSuccess={onSuccess} />
+            <UploadZone
+              apiKey={apiKey}
+              lang={lang}
+              onSuccess={(info) => onSuccess(info.name)}
+            />
           </div>
         </div>
 
@@ -69,6 +73,42 @@ export default function UploadLanding({
           />
         </div>
       </main>
+    </div>
+  );
+}
+
+function SkinHero({ skinId }: { skinId: SkinId }) {
+  if (skinId === "cleantech") {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <span className="text-3xl">⚡</span>
+        <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
+          Upload technical energy documentation — datasheets, regulations, reports
+        </p>
+      </div>
+    );
+  }
+
+  if (skinId === "physics") {
+    return (
+      <div className="flex flex-col items-center gap-2">
+        <span className="text-3xl">⚛</span>
+        <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
+          Upload physics or math material — lecture notes, textbooks, problem sets
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <svg className="w-8 h-8 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+          d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+      </svg>
+      <p className="text-zinc-500 text-sm max-w-xs leading-relaxed">
+        Upload any PDF and ask it anything
+      </p>
     </div>
   );
 }

@@ -23,8 +23,11 @@ export default function UploadZone({
   const inputRef = useRef<HTMLInputElement>(null);
   const s = strings[lang];
 
+  const ACCEPTED_EXT = new Set(["pdf", "docx", "txt", "md"]);
+
   async function upload(file: File) {
-    if (file.type !== "application/pdf") {
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+    if (!ACCEPTED_EXT.has(ext)) {
       setState({ status: "error", message: s.onlyPDF });
       return;
     }
@@ -127,7 +130,7 @@ export default function UploadZone({
         </div>
       )}
 
-      <input ref={inputRef} type="file" accept="application/pdf" className="hidden" onChange={onFileChange} />
+      <input ref={inputRef} type="file" accept=".pdf,.docx,.txt,.md" className="hidden" onChange={onFileChange} />
     </div>
   );
 }

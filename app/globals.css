@@ -3,3 +3,7 @@
 @theme inline {
   --font-mono: var(--font-dm-mono);
 }
+
+* {
+  transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
