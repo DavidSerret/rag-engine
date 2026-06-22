@@ -3,42 +3,50 @@
 import { useEffect, useRef, useState } from "react";
 import { strings, type Lang } from "@/lib/i18n";
 import { type Skin, type SkinId } from "@/lib/skins";
+import { type Message } from "@/lib/types";
 import SkinSelector from "./SkinSelector";
-
-type Source = {
-  fragment: number;
-  preview: string;
-  metadata: { index: number; start: number; end: number };
-};
-
-type Message =
-  | { role: "user"; text: string }
-  | { role: "assistant"; answer: string; sources: Source[] }
-  | { role: "error"; message: string; question: string };
 
 type DocInfo = { name: string; chunks: number };
 
+function truncateFilename(name: string, max = 22): string {
+  if (name.length <= max) return name;
+  const dot = name.lastIndexOf(".");
+  const ext = dot > 0 ? name.slice(dot) : "";
+  return name.slice(0, max - ext.length - 1) + "…" + ext;
+}
+
 export default function Chat({
   apiKey,
-  docInfo,
   lang,
   skin,
+  messages,
+  loadedDocs,
   onLangToggle,
-  onDocumentReplaced,
   onSkinChange,
+  onMessagesChange,
+  onDocumentAdded,
+  onDocumentRemoved,
+  onReplaceAll,
 }: {
   apiKey: string;
-  docInfo: DocInfo;
   lang: Lang;
   skin: Skin;
+  messages: Message[];
+  loadedDocs: string[];
   onLangToggle: () => void;
-  onDocumentReplaced: (info: DocInfo) => void;
   onSkinChange: (id: SkinId) => void;
+  onMessagesChange: (updater: (prev: Message[]) => Message[]) => void;
+  onDocumentAdded: (filename: string) => void;
+  onDocumentRemoved: (filename: string) => void;
+  onReplaceAll: () => void;
 }) {
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [addDocUploading, setAddDocUploading] = useState(false);
+  const [addDocError, setAddDocError] = useState<string | null>(null);
+  const [replaceAllLoading, setReplaceAllLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const addDocInputRef = useRef<HTMLInputElement>(null);
   const s = strings[lang];
 
   const hasMessages = messages.length > 0 || loading;
@@ -52,7 +60,7 @@ export default function Chat({
     if (!question || loading) return;
 
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", text: question }]);
+    onMessagesChange((prev) => [...prev, { role: "user", text: question }]);
     setLoading(true);
 
     try {
@@ -69,24 +77,72 @@ export default function Chat({
       const data = await res.json();
 
       if (!res.ok) {
-        setMessages((prev) => [
+        onMessagesChange((prev) => [
           ...prev,
           { role: "error", message: data.error ?? s.serverError, question },
         ]);
         return;
       }
 
-      setMessages((prev) => [
+      onMessagesChange((prev) => [
         ...prev,
-        { role: "assistant", answer: data.answer, sources: data.sources },
+        { role: "assistant", answer: data.answer, sources: data.sources, lang },
       ]);
     } catch {
-      setMessages((prev) => [
+      onMessagesChange((prev) => [
         ...prev,
         { role: "error", message: s.serverError, question },
       ]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAddDoc(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+
+    setAddDocError(null);
+    setAddDocUploading(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    if (apiKey) formData.append("cohereApiKey", apiKey);
+
+    try {
+      const res = await fetch("/api/ingest", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setAddDocError(data.error ?? s.serverError);
+        return;
+      }
+      onDocumentAdded(file.name);
+    } catch {
+      setAddDocError(s.serverError);
+    } finally {
+      setAddDocUploading(false);
+    }
+  }
+
+  async function handleReplaceAll() {
+    setReplaceAllLoading(true);
+    try {
+      await fetch("/api/documents", { method: "DELETE" });
+      onReplaceAll();
+    } catch {
+      // Silently fail — the state in page.tsx won't be reset, keeping the user in Chat
+    } finally {
+      setReplaceAllLoading(false);
+    }
+  }
+
+  async function handleRemoveDoc(filename: string) {
+    try {
+      await fetch(`/api/documents/${encodeURIComponent(filename)}`, { method: "DELETE" });
+      onDocumentRemoved(filename);
+    } catch {
+      // Ignore — pill stays visible
     }
   }
 
@@ -97,19 +153,72 @@ export default function Chat({
     }
   }
 
+  /* ── Shared header ───────────────────────────────────────────── */
+  const header = (
+    <header className="shrink-0 border-b border-zinc-800/60 px-4 py-2.5 flex items-center justify-between gap-4">
+      {/* Loaded doc pills */}
+      <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+        {loadedDocs.map((name) => (
+          <span
+            key={name}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 text-[10px] min-w-0"
+          >
+            <span className="truncate max-w-[140px]">{truncateFilename(name)}</span>
+            <button
+              className="text-zinc-600 hover:text-zinc-300 transition-colors ml-0.5 shrink-0"
+              onClick={() => handleRemoveDoc(name)}
+              title={`Remove ${name}`}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+      </div>
+
+      {/* Right controls */}
+      <div className="flex items-center gap-3 shrink-0">
+        <SkinSelector currentId={skin.id} onChange={onSkinChange} compact />
+        <LangToggle lang={lang} onToggle={onLangToggle} />
+      </div>
+    </header>
+  );
+
+  /* ── Action row (below input) ────────────────────────────────── */
+  const actionRow = (
+    <div className="flex items-center justify-between px-1 mt-1.5">
+      <div className="flex items-center gap-2">
+        <button
+          className="text-[10px] tracking-widest uppercase text-zinc-600 hover:text-[var(--accent)] transition-colors flex items-center gap-1.5 disabled:opacity-40"
+          onClick={() => addDocInputRef.current?.click()}
+          disabled={addDocUploading}
+        >
+          {addDocUploading ? <MiniSpinner /> : <span>+</span>}
+          {addDocUploading ? s.replacing : "add document"}
+        </button>
+        {addDocError && <span className="text-[10px] text-red-400">{addDocError}</span>}
+      </div>
+      <button
+        className="text-[10px] tracking-widest uppercase text-zinc-600 hover:text-amber-400 transition-colors disabled:opacity-40"
+        onClick={handleReplaceAll}
+        disabled={replaceAllLoading}
+      >
+        {replaceAllLoading ? "clearing…" : "replace all ↺"}
+      </button>
+      <input
+        ref={addDocInputRef}
+        type="file"
+        accept=".pdf,.docx,.txt,.md"
+        className="hidden"
+        onChange={handleAddDoc}
+      />
+    </div>
+  );
+
   /* ── Empty state ─────────────────────────────────────────────── */
   if (!hasMessages) {
     return (
       <div className="h-screen bg-zinc-950 flex flex-col">
-        <ChatHeader
-          docInfo={docInfo}
-          apiKey={apiKey}
-          lang={lang}
-          skin={skin}
-          onLangToggle={onLangToggle}
-          onDocumentReplaced={onDocumentReplaced}
-          onSkinChange={onSkinChange}
-        />
+        {header}
 
         <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
           <div className="flex flex-col items-center gap-3 text-center">
@@ -117,28 +226,33 @@ export default function Chat({
               <div className="w-3 h-3 rounded-full bg-[var(--accent)]" />
             </div>
             <h2 className="text-2xl text-zinc-200 font-medium">{s.whatDoYouWant}</h2>
-            <p className="text-xs text-zinc-600">{s.docReady(docInfo.name, docInfo.chunks)}</p>
+            <p className="text-xs text-zinc-600">
+              {loadedDocs.length} document{loadedDocs.length !== 1 ? "s" : ""} in corpus
+            </p>
           </div>
 
-          <div className="w-full max-w-2xl flex gap-2">
-            <input
-              className="flex-1 h-12 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-[var(--accent-dim)] transition-colors"
-              placeholder={skin.placeholder}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              autoFocus
-            />
-            <button
-              className="px-5 h-12 rounded-xl text-sm font-medium transition-colors
-                bg-[var(--accent-bg)] border border-[var(--accent-dim)] text-[var(--accent)]
-                hover:bg-[var(--accent-bg)] hover:border-[var(--accent)]
-                disabled:opacity-40 disabled:cursor-not-allowed"
-              onClick={send}
-              disabled={!input.trim()}
-            >
-              {s.send}
-            </button>
+          <div className="w-full max-w-2xl flex flex-col gap-1.5">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 h-12 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-[var(--accent-dim)] transition-colors"
+                placeholder={skin.placeholder}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                autoFocus
+              />
+              <button
+                className="px-5 h-12 rounded-xl text-sm font-medium transition-colors
+                  bg-[var(--accent-bg)] border border-[var(--accent-dim)] text-[var(--accent)]
+                  hover:border-[var(--accent)]
+                  disabled:opacity-40 disabled:cursor-not-allowed"
+                onClick={send}
+                disabled={!input.trim()}
+              >
+                {s.send}
+              </button>
+            </div>
+            {actionRow}
           </div>
         </div>
       </div>
@@ -148,15 +262,7 @@ export default function Chat({
   /* ── Messages state ──────────────────────────────────────────── */
   return (
     <div className="h-screen bg-zinc-950 flex flex-col">
-      <ChatHeader
-        docInfo={docInfo}
-        apiKey={apiKey}
-        lang={lang}
-        skin={skin}
-        onLangToggle={onLangToggle}
-        onDocumentReplaced={onDocumentReplaced}
-        onSkinChange={onSkinChange}
-      />
+      {header}
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col gap-6">
@@ -179,6 +285,9 @@ export default function Chat({
                       <div className="w-1.5 h-1.5 rounded-full bg-[var(--accent)]" />
                     </div>
                     <span className="text-[10px] text-[var(--accent-dim)] tracking-widest uppercase font-medium">rag</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-[var(--accent-bg)] text-[var(--accent-dim)] border border-[var(--accent-dim)]/30 ml-1">
+                      {msg.lang.toUpperCase()}
+                    </span>
                   </div>
 
                   <div className="pl-7 text-sm text-zinc-300 leading-relaxed whitespace-pre-wrap">
@@ -187,19 +296,24 @@ export default function Chat({
 
                   {msg.sources.length > 0 && (
                     <div className="pl-7 flex flex-col gap-2">
-                      <span className="text-[10px] text-amber-600/80 tracking-widest uppercase">
+                      <span className="text-[10px] text-zinc-600 tracking-widest uppercase">
                         {s.sources}
                       </span>
                       <div className="flex flex-col gap-1.5">
                         {msg.sources.map((src) => (
                           <div
                             key={src.fragment}
-                            className="rounded-lg border border-amber-900/30 bg-amber-950/10 px-3 py-2 flex gap-3"
+                            className="rounded-lg border border-[var(--accent-dim)]/20 bg-[var(--accent-bg)] px-3 py-2 flex gap-3"
                           >
-                            <span className="shrink-0 text-[11px] text-amber-500 font-medium mt-0.5">
+                            <span className="shrink-0 text-[11px] text-[var(--accent)] font-medium mt-0.5">
                               #{src.fragment}
                             </span>
                             <div className="flex flex-col gap-0.5 min-w-0">
+                              {src.metadata.filename && (
+                                <span className="text-[10px] text-zinc-600">
+                                  {src.metadata.filename} · Fragment {src.fragment}
+                                </span>
+                              )}
                               <p className="text-xs text-zinc-500 leading-relaxed">{src.preview}</p>
                               <span className="text-[10px] text-zinc-700">
                                 pos. {src.metadata.start}–{src.metadata.end}
@@ -247,128 +361,33 @@ export default function Chat({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-zinc-800/60 p-4">
-        <div className="max-w-3xl mx-auto flex gap-2">
-          <input
-            className="flex-1 h-11 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-700 transition-colors disabled:opacity-50"
-            placeholder={s.continuePlaceholder}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            disabled={loading}
-          />
-          <button
-            className="px-5 h-11 rounded-xl text-sm transition-colors
-              bg-zinc-900 border border-zinc-800 text-zinc-500
-              hover:border-[var(--accent-dim)] hover:text-[var(--accent)]
-              disabled:opacity-40 disabled:cursor-not-allowed
-              disabled:hover:border-zinc-800 disabled:hover:text-zinc-500"
-            onClick={send}
-            disabled={loading || !input.trim()}
-          >
-            {s.send}
-          </button>
+      <div className="shrink-0 border-t border-zinc-800/60 px-4 pt-3 pb-4">
+        <div className="max-w-3xl mx-auto flex flex-col gap-0">
+          <div className="flex gap-2">
+            <input
+              className="flex-1 h-11 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-700 transition-colors disabled:opacity-50"
+              placeholder={s.continuePlaceholder}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={onKeyDown}
+              disabled={loading}
+            />
+            <button
+              className="px-5 h-11 rounded-xl text-sm transition-colors
+                bg-zinc-900 border border-zinc-800 text-zinc-500
+                hover:border-[var(--accent-dim)] hover:text-[var(--accent)]
+                disabled:opacity-40 disabled:cursor-not-allowed
+                disabled:hover:border-zinc-800 disabled:hover:text-zinc-500"
+              onClick={send}
+              disabled={loading || !input.trim()}
+            >
+              {s.send}
+            </button>
+          </div>
+          {actionRow}
         </div>
       </div>
     </div>
-  );
-}
-
-/* ── ChatHeader with inline document replacement ─────────────── */
-function ChatHeader({
-  docInfo,
-  apiKey,
-  lang,
-  skin,
-  onLangToggle,
-  onDocumentReplaced,
-  onSkinChange,
-}: {
-  docInfo: DocInfo;
-  apiKey: string;
-  lang: Lang;
-  skin: Skin;
-  onLangToggle: () => void;
-  onDocumentReplaced: (info: DocInfo) => void;
-  onSkinChange: (id: SkinId) => void;
-}) {
-  const [uploading, setUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const s = strings[lang];
-
-  async function replaceDoc(file: File) {
-    if (file.type !== "application/pdf") {
-      setUploadError(s.onlyPDF);
-      return;
-    }
-
-    setUploading(true);
-    setUploadError(null);
-
-    const formData = new FormData();
-    formData.append("file", file);
-    if (apiKey) formData.append("cohereApiKey", apiKey);
-
-    try {
-      const res = await fetch("/api/ingest", { method: "POST", body: formData });
-      const data = await res.json();
-      if (!res.ok) {
-        setUploadError(data.error ?? s.serverError);
-        return;
-      }
-      onDocumentReplaced({ name: file.name, chunks: data.inserted });
-    } catch {
-      setUploadError(s.serverError);
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  return (
-    <header className="shrink-0 border-b border-zinc-800/60 px-6 py-3 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-3 min-w-0">
-        <span className="text-[var(--accent)] tracking-widest uppercase text-xs font-medium shrink-0">
-          rag-engine
-        </span>
-        <span className="text-zinc-700 text-xs shrink-0">—</span>
-        <span className="text-zinc-500 text-xs truncate">{docInfo.name}</span>
-        <span className="text-zinc-700 text-[10px] shrink-0">·</span>
-        <span className="text-zinc-700 text-[10px] shrink-0">{docInfo.chunks} {s.frag}</span>
-      </div>
-
-      <div className="flex items-center gap-4 shrink-0">
-        {uploadError && (
-          <span className="text-[10px] text-red-400">{uploadError}</span>
-        )}
-
-        <button
-          className={`text-[10px] tracking-widest uppercase transition-colors flex items-center gap-1.5
-            ${uploading ? "text-zinc-600 cursor-not-allowed" : "text-zinc-600 hover:text-amber-400"}`}
-          onClick={() => !uploading && inputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading && <MiniSpinner />}
-          {uploading ? s.replacing : s.replace}
-        </button>
-
-        <SkinSelector currentId={skin.id} onChange={onSkinChange} compact />
-
-        <LangToggle lang={lang} onToggle={onLangToggle} />
-
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/pdf"
-          className="hidden"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) replaceDoc(file);
-            e.target.value = "";
-          }}
-        />
-      </div>
-    </header>
   );
 }
 
