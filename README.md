@@ -8,7 +8,7 @@
 
 **[→ Live demo](https://rag-engine-gamma.vercel.app)**
 
-Upload any PDF and ask it anything. Answers are grounded strictly in the document and include exact citations.
+Upload a PDF, DOCX, TXT or MD file and ask it anything. Answers are grounded strictly in the document and include exact citations. Ships with three **skins** — selectable personas that reskin the UI and steer the model toward a domain.
 
 ![RAG Engine screenshot](docs/screenshot.png)
 
@@ -19,9 +19,9 @@ Upload any PDF and ask it anything. Answers are grounded strictly in the documen
 ```
 INGESTION
 
-  PDF Upload ──► Text Extraction ──► Recursive Chunking ──► Embedding ──► Supabase
-   (browser)        (unpdf)          ~600 tok / 100 tok      (Cohere)    pgvector
-                                          overlap           embed-v3.0    HNSW idx
+  File Upload ──► Text Extraction ──► Recursive Chunking ──► Embedding ──► Supabase
+ (PDF/DOCX/TXT/MD)  (unpdf/mammoth)    ~600 tok / 100 tok      (Cohere)    pgvector
+                                           overlap           embed-v3.0    HNSW idx
 
 
 QUERY
@@ -41,21 +41,38 @@ QUERY
 | Database | Supabase + pgvector | HNSW index, `match_documents` RPC |
 | Embeddings | Cohere `embed-multilingual-v3.0` | 1024 dims, `search_document` / `search_query` |
 | Reranking | Cohere `rerank-multilingual-v3.0` | top 15 → top 5 |
-| Generation | Cohere `command-r-plus-08-2024` | grounded, citation-aware prompt |
-| PDF parsing | `unpdf` | works in serverless, no native deps |
-| UI | Tailwind CSS v4, DM Mono | dark theme, teal/amber palette |
+| Generation | Cohere `command-r-plus-08-2024` | grounded, citation-aware prompt, auto-detects response language |
+| Document parsing | `unpdf` (PDF), `mammoth` (DOCX) | works in serverless, no native deps; TXT/MD read as plain text |
+| UI | Tailwind CSS v4, DM Mono | dark theme, per-skin color/radius/background tokens |
+
+---
+
+## Skins
+
+A skin is a UI persona: it swaps the accent palette, border radius, background motif, model preamble and copy — all from a single config object (`lib/skins.ts`). Switching skins keeps a separate chat history per skin but shares the same document corpus.
+
+| Skin | Domain | Accent | Radius | Background |
+|---|---|---|---|---|
+| **General** | Any document | Teal | `rounded-2xl` (soft) | none |
+| **Cleantech** | Energy, district heating, industrial efficiency | Green | `rounded-md` (sharp) | grid |
+| **Physics** | Academic / scientific documents | Indigo | `rounded-3xl` (rounded) | dots |
+
+Adding a skin means adding one entry to `lib/skins.ts` — colors, radius, pattern and preamble — no other code changes required.
 
 ---
 
 ## Features
 
-- **Drag & drop** PDF upload with real-time progress feedback
+- **Drag & drop** upload (PDF, DOCX, TXT, MD) with real-time progress feedback
+- **Shared multi-document corpus** — add or remove individual files, or replace the whole corpus, without leaving the chat
 - **Semantic search** via pgvector cosine similarity
 - **Cross-encoder reranking** for precision on top of vector recall
 - **Cited answers** — every claim references a specific fragment and its position in the document
-- **Language toggle** — EN / ES switch affects both UI strings and the model preamble
-- **Inline document replacement** — swap PDFs mid-conversation without navigating away
+- **Three skins** (General / Cleantech / Physics) — distinct color palette, border radius and background pattern per persona, plus a tailored model preamble
+- **Auto-detected response language** — the model answers in the language the question was asked in, no manual toggle
+- **Inline document management** — add, remove or replace documents mid-conversation without navigating away
 - **BYO API key** — users can provide their own Cohere key in the UI
+- **Responsive layout** — landing, skin selector and chat all adapt down to mobile widths
 
 ---
 
@@ -67,9 +84,11 @@ QUERY
 
 **Recursive chunking** — Text is split at paragraph → sentence → word boundaries (~600 tokens, ~100 token overlap, min 100 chars), preserving semantic coherence across chunks.
 
-**Document isolation** — The table is cleared before each ingestion. One active document at a time keeps the demo focused and avoids cross-document contamination.
+**Shared corpus, per-skin chat** — All ingested documents live in one corpus regardless of active skin; only the chat history and model preamble are scoped per skin. Users manage the corpus explicitly (add / remove / replace all) instead of it being implicitly cleared.
 
-**Language-aware generation** — The EN/ES toggle changes both UI strings and the model preamble, so fragment citations (`Fragment 1` vs `Fragmento 1`) are consistent with the answer language.
+**Skin as a single config object** — Color, radius and background pattern all derive from one `Skin` entry, so the UI never special-cases a skin id outside `lib/skins.ts` — components just read `skin.radius` / `skin.pattern` / `skin.colors`.
+
+**Auto-detected response language** — The model infers the answer language from the question itself, so fragment citations (`Fragment 1` vs `Fragmento 1`) stay consistent without a manual UI toggle.
 
 ---
 
@@ -148,22 +167,27 @@ npm run dev
 ```
 app/
   api/
-    ingest/route.ts      # PDF → chunks → embeddings → Supabase
-    query/route.ts       # question → embed → search → rerank → generate
+    ingest/route.ts            # file → text → chunks → embeddings → Supabase
+    query/route.ts             # question → embed → search → rerank → generate
+    documents/route.ts         # GET corpus filenames, DELETE (replace all)
+    documents/[filename]/route.ts  # DELETE a single document
   components/
-    Chat.tsx             # conversation UI + inline document replacement
-    UploadLanding.tsx    # initial upload screen
-    UploadZone.tsx       # drag & drop PDF upload
-  page.tsx               # state machine: landing ↔ chat
+    Chat.tsx                   # conversation UI, document management, action row
+    UploadLanding.tsx          # initial upload screen, title, skin picker
+    UploadZone.tsx             # drag & drop multi-format upload
+    SkinSelector.tsx           # skin picker (full cards + compact pill variant)
+  page.tsx                     # state machine: landing ↔ chat, skin/corpus state
 lib/
-  chunker.ts             # recursive text splitting
-  cohere.ts              # shared Cohere client factory
-  db.ts                  # Supabase insert + clear
-  embedder.ts            # embed queries and document chunks
-  generator.ts           # LLM answer generation
-  i18n.ts                # EN/ES strings and model preambles
-  pdf.ts                 # PDF extraction and cleaning
-  retriever.ts           # vector search + reranking
+  chunker.ts                   # recursive text splitting
+  cohere.ts                    # shared Cohere client factory
+  db.ts                        # Supabase insert, clear, per-file delete
+  embedder.ts                  # embed queries and document chunks
+  extractor.ts                 # text extraction for PDF / DOCX / TXT / MD
+  generator.ts                 # LLM answer generation
+  i18n.ts                      # UI strings and base model preamble
+  retriever.ts                 # vector search + reranking
+  skins.ts                     # skin definitions: colors, radius, pattern, preamble
+  types.ts                     # shared Message / chat types
 supabase/
-  schema.sql             # full database schema
+  schema.sql                   # full database schema
 ```
