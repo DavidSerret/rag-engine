@@ -44,14 +44,14 @@ export default function SkinSelector({
   }
 
   return (
-    <div className="flex gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
       {skinList.map((skin) => {
         const isActive = skin.id === currentId;
         return (
           <button
             key={skin.id}
             onClick={() => onChange(skin.id)}
-            className="flex-1 flex flex-col gap-1 items-start px-3 py-2.5 rounded-lg border transition-all duration-150 text-left"
+            className={`flex flex-col gap-1 items-start px-3 py-2.5 ${skin.radius} border transition-all duration-150 text-left`}
             style={
               isActive
                 ? { borderColor: skin.colors.accent, backgroundColor: skin.colors.accentBg }

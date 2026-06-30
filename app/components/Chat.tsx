@@ -149,7 +149,7 @@ export default function Chat({
 
   /* ── Shared header ───────────────────────────────────────────── */
   const header = (
-    <header className="shrink-0 border-b border-zinc-800/60 px-4 py-2.5 flex items-center justify-between gap-4">
+    <header className="shrink-0 border-b border-zinc-800/60 px-4 py-2.5 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
       <div className="flex items-center gap-1.5 flex-wrap min-w-0">
         {loadedDocs.map((name) => (
           <span
@@ -211,21 +211,27 @@ export default function Chat({
       <div className="h-screen bg-zinc-950 flex flex-col">
         {header}
 
-        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-8">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-[var(--accent-bg)] border border-[var(--accent-dim)] flex items-center justify-center">
+        <div className="relative flex-1 flex flex-col items-center justify-center px-4 sm:px-6 gap-8 overflow-hidden">
+          <div
+            className={`pointer-events-none absolute inset-0 ${
+              skin.pattern === "grid" ? "skin-pattern-grid" : skin.pattern === "dots" ? "skin-pattern-dots" : ""
+            } [mask-image:radial-gradient(ellipse_at_center,black,transparent_65%)]`}
+          />
+
+          <div className="relative flex flex-col items-center gap-3 text-center">
+            <div className={`w-12 h-12 ${skin.radius} bg-[var(--accent-bg)] border border-[var(--accent-dim)] flex items-center justify-center`}>
               <div className="w-3 h-3 rounded-full bg-[var(--accent)]" />
             </div>
-            <h2 className="text-2xl text-zinc-200 font-medium">{s.whatDoYouWant}</h2>
+            <h2 className="text-xl sm:text-2xl text-zinc-200 font-medium">{s.whatDoYouWant}</h2>
             <p className="text-xs text-zinc-600">
               {loadedDocs.length} document{loadedDocs.length !== 1 ? "s" : ""} in corpus
             </p>
           </div>
 
-          <div className="w-full max-w-2xl flex flex-col gap-1.5">
+          <div className="relative w-full max-w-2xl flex flex-col gap-1.5">
             <div className="flex gap-2">
               <input
-                className="flex-1 h-12 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-[var(--accent-dim)] transition-colors"
+                className={`flex-1 h-12 ${skin.radius} bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-[var(--accent-dim)] transition-colors`}
                 placeholder={skin.placeholder}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -233,10 +239,10 @@ export default function Chat({
                 autoFocus
               />
               <button
-                className="px-5 h-12 rounded-xl text-sm font-medium transition-colors
+                className={`px-4 sm:px-5 h-12 ${skin.radius} text-sm font-medium transition-colors
                   bg-[var(--accent-bg)] border border-[var(--accent-dim)] text-[var(--accent)]
                   hover:border-[var(--accent)]
-                  disabled:opacity-40 disabled:cursor-not-allowed"
+                  disabled:opacity-40 disabled:cursor-not-allowed`}
                 onClick={send}
                 disabled={!input.trim()}
               >
@@ -256,12 +262,12 @@ export default function Chat({
       {header}
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col gap-6">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 flex flex-col gap-6">
           {messages.map((msg, i) => {
             if (msg.role === "user") {
               return (
                 <div key={i} className="flex justify-end">
-                  <div className="max-w-[75%] rounded-2xl rounded-tr-sm bg-zinc-800 px-4 py-2.5 text-sm text-zinc-200 leading-relaxed">
+                  <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-tr-sm bg-zinc-800 px-4 py-2.5 text-sm text-zinc-200 leading-relaxed">
                     {msg.text}
                   </div>
                 </div>
@@ -291,7 +297,7 @@ export default function Chat({
                         {msg.sources.map((src) => (
                           <div
                             key={src.fragment}
-                            className="rounded-lg border border-[var(--accent-dim)]/20 bg-[var(--accent-bg)] px-3 py-2 flex gap-3"
+                            className={`${skin.radius} border border-[var(--accent-dim)]/20 bg-[var(--accent-bg)] px-3 py-2 flex gap-3`}
                           >
                             <span className="shrink-0 text-[11px] text-[var(--accent)] font-medium mt-0.5">
                               #{src.fragment}
@@ -353,7 +359,7 @@ export default function Chat({
         <div className="max-w-3xl mx-auto flex flex-col gap-0">
           <div className="flex gap-2">
             <input
-              className="flex-1 h-11 rounded-xl bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-700 transition-colors disabled:opacity-50"
+              className={`flex-1 h-11 ${skin.radius} bg-zinc-900 border border-zinc-800 px-4 text-sm text-zinc-200 placeholder-zinc-600 outline-none focus:border-zinc-700 transition-colors disabled:opacity-50`}
               placeholder={s.continuePlaceholder}
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -361,11 +367,11 @@ export default function Chat({
               disabled={loading}
             />
             <button
-              className="px-5 h-11 rounded-xl text-sm transition-colors
+              className={`px-4 sm:px-5 h-11 ${skin.radius} text-sm transition-colors
                 bg-zinc-900 border border-zinc-800 text-zinc-500
                 hover:border-[var(--accent-dim)] hover:text-[var(--accent)]
                 disabled:opacity-40 disabled:cursor-not-allowed
-                disabled:hover:border-zinc-800 disabled:hover:text-zinc-500"
+                disabled:hover:border-zinc-800 disabled:hover:text-zinc-500`}
               onClick={send}
               disabled={loading || !input.trim()}
             >

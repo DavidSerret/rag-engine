@@ -7,3 +7,17 @@
 * {
   transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease;
 }
+
+@layer utilities {
+  .skin-pattern-grid {
+    background-image:
+      linear-gradient(color-mix(in srgb, var(--accent) 16%, transparent) 1px, transparent 1px),
+      linear-gradient(90deg, color-mix(in srgb, var(--accent) 16%, transparent) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+
+  .skin-pattern-dots {
+    background-image: radial-gradient(color-mix(in srgb, var(--accent) 26%, transparent) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
+  }
+}

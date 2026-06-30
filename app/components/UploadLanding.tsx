@@ -21,20 +21,31 @@ export default function UploadLanding({
   onSkinChange: (id: SkinId) => void;
 }) {
   return (
-    <div className="min-h-screen bg-zinc-950 flex flex-col">
-      <header className="shrink-0 px-6 py-4 flex items-center justify-between">
-        <span className="text-xs tracking-widest uppercase text-zinc-700">rag-engine</span>
+    <div className="relative min-h-screen bg-zinc-950 flex flex-col overflow-hidden">
+      <div
+        className={`pointer-events-none absolute inset-0 ${
+          skin.pattern === "grid" ? "skin-pattern-grid" : skin.pattern === "dots" ? "skin-pattern-dots" : ""
+        } [mask-image:radial-gradient(ellipse_at_top,black,transparent_65%)]`}
+      />
+
+      <header className="relative shrink-0 px-4 sm:px-6 py-4 flex items-center justify-between">
+        <span className="text-[10px] sm:text-xs tracking-[0.3em] uppercase text-zinc-700">RAG Engine</span>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center gap-8 px-6 py-12">
-        <div className="flex flex-col items-center gap-4 text-center">
+      <main className="relative flex-1 flex flex-col items-center justify-center gap-8 px-4 sm:px-6 py-12">
+        <div className="flex flex-col items-center gap-5 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[var(--accent-dim)] bg-[var(--accent-bg)] text-[var(--accent)] text-xs">
             <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
             {s.ready}
           </div>
 
-          <h1 className="text-5xl font-medium tracking-tight bg-gradient-to-br from-[var(--accent)] to-amber-400 bg-clip-text text-transparent">
-            rag-engine
+          <h1 className="flex flex-col items-center">
+            <span className="text-5xl sm:text-6xl md:text-7xl font-semibold tracking-[0.18em] bg-gradient-to-br from-[var(--accent)] to-amber-400 bg-clip-text text-transparent">
+              RAG
+            </span>
+            <span className="mt-1 sm:mt-2 text-lg sm:text-2xl md:text-3xl font-light tracking-[0.55em] pl-[0.55em] text-zinc-300">
+              ENGINE
+            </span>
           </h1>
 
           <SkinHero skinId={skin.id} />
@@ -49,6 +60,7 @@ export default function UploadLanding({
           <div className="h-44">
             <UploadZone
               apiKey={apiKey}
+              radius={skin.radius}
               onSuccess={(info) => onSuccess(info.name)}
             />
           </div>
@@ -60,7 +72,7 @@ export default function UploadLanding({
           </label>
           <input
             type="password"
-            className="h-9 rounded-lg bg-zinc-900/60 border border-zinc-800 px-3 text-xs text-zinc-400 placeholder-zinc-700 outline-none focus:border-zinc-600 transition-colors"
+            className={`h-9 ${skin.radius} bg-zinc-900/60 border border-zinc-800 px-3 text-xs text-zinc-400 placeholder-zinc-700 outline-none focus:border-zinc-600 transition-colors`}
             placeholder={s.apiKeyPlaceholder}
             value={apiKey}
             onChange={(e) => onApiKeyChange(e.target.value)}

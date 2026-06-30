@@ -16,9 +16,11 @@ type State =
 
 export default function UploadZone({
   apiKey,
+  radius = "rounded-lg",
   onSuccess,
 }: {
   apiKey: string;
+  radius?: string;
   onSuccess: (info: { name: string; chunks: number }) => void;
 }) {
   const [state, setState] = useState<State>({ status: "idle" });
@@ -77,7 +79,7 @@ export default function UploadZone({
   return (
     <div className="flex-1 flex flex-col gap-3">
       <div
-        className={`flex-1 rounded-lg border border-dashed flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer select-none
+        className={`flex-1 ${radius} border border-dashed flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer select-none
           ${state.status === "dragging" ? "border-[var(--accent)] bg-[var(--accent-bg)]" : "border-zinc-700 hover:border-zinc-500"}
           ${isUploading ? "pointer-events-none opacity-60" : ""}
         `}
@@ -111,14 +113,14 @@ export default function UploadZone({
       </div>
 
       {state.status === "success" && (
-        <div className="rounded-lg border border-[var(--accent-dim)] bg-[var(--accent-bg)] px-3 py-2">
+        <div className={`${radius} border border-[var(--accent-dim)] bg-[var(--accent-bg)] px-3 py-2`}>
           <p className="text-xs text-[var(--accent)]">✓ {state.name}</p>
           <p className="text-xs text-zinc-500 mt-0.5">{s.fragmentsIndexed(state.chunks)}</p>
         </div>
       )}
 
       {state.status === "error" && (
-        <div className="rounded-lg border border-red-900 bg-red-950/30 px-3 py-2">
+        <div className={`${radius} border border-red-900 bg-red-950/30 px-3 py-2`}>
           <p className="text-xs text-red-400">{state.message}</p>
           <button
             className="text-xs text-zinc-500 hover:text-zinc-300 mt-1 transition-colors"
